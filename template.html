@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+        :root {
+            /* Technology Blue theme palette (default) */
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --accent-teal: #1abc9c;
+            --accent-blue: #3498db;
+            --accent-amber: #f39c12;
+            --accent-pink: #e91e63;
+
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+            --text-muted: #95a5a6;
+
+            --bg: #fafafa;
+            --bg-white: #ffffff;
+            --border: #e0e0e0;
+            --code-bg: #f8f9fa;
+            --callout-bg: #f3e5f5;
+            --callout-border: #3498db;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', 'Inter', -apple-system, sans-serif;
+            font-size: 11pt;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        /* Print Settings - Golden Ratio Margins (top:right:bottom:left = 16:24:20:18) */
+        @page {
+            size: A4;
+            margin: 16mm 24mm 20mm 18mm;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .no-print {
+                display: none;
+            }
+
+            /* Ensure background colors print */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Avoid breaking code blocks and callouts */
+            pre, blockquote, .info-box, .warning-box, .success-box, .tip-box, .highlight-box {
+                page-break-inside: avoid;
+            }
+
+            /* Don't break after section headers */
+            .section-header, .part-header {
+                page-break-after: avoid;
+            }
+
+            /* Lighter code background for print */
+            pre {
+                background: #f0f0f0 !important;
+                border: 1px solid #ccc !important;
+            }
+            pre code {
+                color: #333 !important;
+            }
+        }
+
+        /* Container */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Cover Page */
+        .cover-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 60px 40px;
+            background: linear-gradient(135deg, #fff 0%, #fafafa 100%);
+            position: relative;
+        }
+
+        .cover-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+
+        .series-name {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 14pt;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 0;
+            word-spacing: 0.5em;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .cover-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 32pt;
+            font-weight: 700;
+            line-height: 1.4;
+            color: var(--text);
+            margin-bottom: 20px;
+            max-width: 600px;
+            letter-spacing: -0.02em;
+        }
+
+        .cover-subtitle {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 16pt;
+            font-weight: 400;
+            color: var(--text-light);
+            margin-bottom: 60px;
+            max-width: 500px;
+            line-height: 1.5;
+        }
+
+        .cover-meta {
+            margin-top: 60px;
+            padding: 30px;
+            background: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .cover-keywords {
+            font-size: 10pt;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .cover-audience {
+            font-size: 10pt;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .cover-version {
+            font-size: 9pt;
+            color: var(--text-light);
+            font-family: 'Inter', monospace;
+        }
+
+        .cover-author {
+            margin-top: 40px;
+            font-size: 12pt;
+            color: var(--text);
+        }
+
+        .cover-footer {
+            position: absolute;
+            bottom: 30px;
+            font-size: 8pt;
+            color: var(--text-light);
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        /* TOC Page */
+        .toc-page {
+            padding: 60px 0;
+            min-height: 100vh;
+        }
+
+        .toc-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 24pt;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        .toc-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: 10pt;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 4px;
+            color: var(--text-light);
+            margin-bottom: 60px;
+            text-transform: uppercase;
+        }
+
+        .toc-part {
+            margin-bottom: 30px;
+        }
+
+        .toc-part-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 12pt;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: baseline;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toc-item-number {
+            font-family: 'Inter', monospace;
+            font-size: 10pt;
+            color: var(--primary);
+            margin-right: 15px;
+            min-width: 60px;
+        }
+
+        .toc-item-title {
+            font-size: 11pt;
+            color: var(--text);
+        }
+
+        .toc-item-page {
+            margin-left: auto;
+            font-size: 10pt;
+            color: var(--text-light);
+        }
+
+        /* Content Page */
+        .content-page {
+            padding: 40px 0;
+        }
+
+        /* Section Headers */
+        .section-header {
+            margin: 60px 0 30px 0;
+            page-break-after: avoid;
+        }
+
+        .section-number {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 28pt;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 22pt;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+        }
+
+        .section-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: 12pt;
+            font-weight: 400;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        /* Part Header */
+        .part-header {
+            text-align: center;
+            margin: 80px 0 60px 0;
+            page-break-after: avoid;
+            background: linear-gradient(180deg,
+                rgba(52, 152, 219, 0.05) 0%,
+                transparent 100%);
+            padding: 40px 20px;
+            border-radius: 8px;
+        }
+
+        .part-number {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 14pt;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 4px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--primary);
+            display: inline-block;
+            padding-bottom: 8px;
+        }
+
+        .part-title {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 20pt;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        /* Content Elements */
+        h3 {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 16pt;
+            font-weight: 600;
+            color: var(--text);
+            margin: 40px 0 20px 0;
+            page-break-after: avoid;
+            letter-spacing: -0.01em;
+        }
+
+        h4 {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 13pt;
+            font-weight: 500;
+            color: var(--text);
+            margin: 30px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        p {
+            margin-bottom: 1em;
+            text-align: justify;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1.2em 0;
+            padding-left: 2em;
+        }
+
+        li {
+            margin-bottom: 0.6em;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2em 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-weight: 600;
+            background: var(--code-bg);
+            color: var(--text);
+        }
+
+        tr:nth-child(even) {
+            background: var(--bg);
+        }
+
+        /* Code Blocks */
+        code {
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        pre {
+            background: #282c34;
+            border: 1px solid #3e4451;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 1.5em 0;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            font-size: 0.85em;
+            line-height: 1.6;
+            color: #abb2bf;
+        }
+
+        /* Syntax highlighting - VS Code Dark inspired */
+        .syntax-keyword { color: #c678dd; font-weight: 600; }
+        .syntax-string { color: #98c379; }
+        .syntax-number { color: #d19a66; }
+        .syntax-comment { color: #5c6370; font-style: italic; }
+        .syntax-function { color: #61afef; }
+        .syntax-class { color: #e5c07b; }
+        .syntax-operator { color: #56b6c2; }
+        .syntax-variable { color: #e06c75; }
+        .syntax-property { color: #d19a66; }
+
+        /* Blockquotes */
+        blockquote {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #fafafa;
+            border-left: 3px solid var(--primary);
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        blockquote strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* Horizontal Rule */
+        hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 3em 0;
+        }
+
+        /* Emphasis */
+        strong {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        em {
+            font-style: italic;
+            color: var(--text-light);
+        }
+
+        /* Footer */
+        .content-footer {
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 9pt;
+            color: var(--text-light);
+        }
+
+        /* Flowchart / Diagram */
+        .flowchart {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 2em 0;
+            flex-wrap: wrap;
+        }
+
+        .flowchart-arrow {
+            color: var(--text-light);
+            font-size: 1.3em;
+            font-weight: 400;
+        }
+
+        .flowchart-box {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-family: 'Noto Sans SC', sans-serif;
+            font-weight: 500;
+            font-size: 0.9em;
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        /* File Tree */
+        .file-tree {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 2em 0;
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 0.85em;
+        }
+
+        .file-tree-line {
+            padding: 4px 0;
+            color: var(--text);
+        }
+
+        .file-tree-dir {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .file-tree-file {
+            color: var(--text-light);
+        }
+
+        /* Info Box */
+        .info-box {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #f0fdfa;
+            border-left: 3px solid var(--accent-teal);
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Success Box */
+        .success-box {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #f0fdf4;
+            border-left: 3px solid #22c55e;
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #fffbeb;
+            border-left: 3px solid #eab308;
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Tip Box */
+        .tip-box {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #fef3c7;
+            border-left: 3px solid var(--accent-amber);
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Diagram Box */
+        .diagram-box {
+            margin: 2em 0;
+            padding: 20px;
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+
+        /* Process Steps */
+        .process-steps {
+            counter-reset: step;
+            margin: 2em 0;
+        }
+
+        .process-step {
+            position: relative;
+            padding-left: 45px;
+            margin: 1.2em 0;
+        }
+
+        .process-step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: #fafafa;
+            border-left: 3px solid var(--primary);
+            padding: 18px 20px;
+            margin: 2em 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="cover-page">
+        <div class="series-name">{series}</div>
+        <h1 class="cover-title">{title}</h1>
+        <div class="cover-subtitle">{subtitle}</div>
+        <div class="cover-meta">
+            <div class="cover-keywords"><strong>关键词：</strong>{keywords}</div>
+            <div class="cover-audience"><strong>适合读者：</strong>{audience}</div>
+            <div class="cover-version"><strong>版本：</strong>{version}</div>
+        </div>
+        <div class="cover-author">{author_info}</div>
+        <div class="cover-footer">{footer_note}</div>
+    </div>
+
+    <!-- TOC Page -->
+    <div class="toc-page page-break">
+        <div class="container">
+            <h1 class="toc-title">目录</h1>
+            <div class="toc-subtitle">CONTENTS</div>
+            {toc_content}
+        </div>
+    </div>
+
+    <!-- Content Pages -->
+    <div class="container content-page">
+        {content_body}
+    </div>
+
+    <div class="container">
+        <div class="content-footer">
+            {footer_note}
+        </div>
+    </div>
+</body>
+</html>

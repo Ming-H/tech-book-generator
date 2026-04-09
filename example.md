@@ -1,7 +1,7 @@
 ---
 title: Orange Book Generator
 subtitle: 从入门到精通
-series: 橙皮书
+series: 技术文档
 author: Claude
 version: v260409
 keywords: PDF生成 · HTML模板 · 技术文档 · 中文排版
@@ -10,14 +10,14 @@ audience: 需要创建专业技术教程的开发者
 
 # Part 1: 概念
 
-## §01 什么是橙皮书风格
+## §01 什么是技术文档风格
 
-Orange Book Style Guide
+Tech Book Style Guide
 
-橙皮书风格是一种专为中文技术教程设计的排版风格，具有以下特点：
+技术文档风格是一种专为中文技术教程设计的排版风格，具有以下特点：
 
 **视觉设计：**
-- 橙色主题（橙皮书 branding）
+- 多主题配色（科技蓝、经典橙、翡翠绿等）
 - 专业的字体排版
 - 中英文双语标题
 - 清晰的层级结构
@@ -45,7 +45,7 @@ Core Design Elements
 
 > **核心建议**
 >
-> 使用橙皮书风格时，保持一致性非常重要。所有章节都应该遵循相同的编号规则和格式。
+> 使用技术文档风格时，保持一致性非常重要。所有章节都应该遵循相同的编号规则和格式。
 
 # Part 2: 动手实践
 

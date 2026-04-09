@@ -83,6 +83,16 @@
             pre code {
                 color: #333 !important;
             }
+            .code-block {
+                border: 1px solid #ccc !important;
+            }
+            .code-block-header {
+                background: #e0e0e0 !important;
+                border-bottom: 1px solid #ccc !important;
+            }
+            .code-block-lang {
+                color: #666 !important;
+            }
         }
 
         /* Container */
@@ -301,6 +311,7 @@
                 transparent 100%);
             padding: 40px 20px;
             border-radius: 8px;
+            border-top: 3px solid var(--primary);
         }
 
         .part-number {
@@ -347,6 +358,8 @@
         p {
             margin-bottom: 1em;
             text-align: justify;
+            orphans: 3;
+            widows: 3;
         }
 
         a {
@@ -401,6 +414,37 @@
             background: var(--code-bg);
             padding: 2px 6px;
             border-radius: 3px;
+        }
+
+        /* Code Block Wrapper with Language Header */
+        .code-block {
+            margin: 1.5em 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #3e4451;
+            page-break-inside: avoid;
+        }
+
+        .code-block-header {
+            background: #21252b;
+            padding: 6px 16px;
+            border-bottom: 1px solid #3e4451;
+            display: flex;
+            align-items: center;
+        }
+
+        .code-block-lang {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            font-size: 0.75em;
+            color: #9da5b4;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .code-block pre {
+            margin: 0;
+            border: none;
+            border-radius: 0;
         }
 
         pre {
@@ -555,6 +599,16 @@
             padding: 18px 20px;
             background: #fffbeb;
             border-left: 3px solid #eab308;
+            border-radius: 0 4px 4px 0;
+            page-break-inside: avoid;
+        }
+
+        /* Danger Box */
+        .danger-box {
+            margin: 2em 0;
+            padding: 18px 20px;
+            background: #fef2f2;
+            border-left: 3px solid #ef4444;
             border-radius: 0 4px 4px 0;
             page-break-inside: avoid;
         }

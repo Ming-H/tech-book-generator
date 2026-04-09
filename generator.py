@@ -19,6 +19,23 @@ import subprocess
 class TechBookGenerator:
     """Generate Orange Book style HTML/PDF from markdown content."""
 
+    # Language display name mapping
+    LANG_DISPLAY = {
+        'python': 'Python', 'py': 'Python',
+        'javascript': 'JavaScript', 'js': 'JavaScript',
+        'typescript': 'TypeScript', 'ts': 'TypeScript',
+        'bash': 'Bash', 'shell': 'Bash', 'sh': 'Bash',
+        'css': 'CSS',
+        'html': 'HTML',
+        'json': 'JSON',
+        'sql': 'SQL',
+        'yaml': 'YAML', 'yml': 'YAML',
+        'xml': 'XML',
+        'markdown': 'Markdown', 'md': 'Markdown',
+        'dockerfile': 'Dockerfile',
+        'makefile': 'Makefile',
+    }
+
     # Theme color palettes
     THEMES = {
         'blue': {
@@ -29,6 +46,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#3498db',
+            'primary-bg-light': 'rgba(52, 152, 219, 0.05)',
         },
         'orange': {
             'primary': '#e67e22',
@@ -38,6 +56,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#e67e22',
+            'primary-bg-light': 'rgba(230, 126, 34, 0.05)',
         },
         'green': {
             'primary': '#27ae60',
@@ -47,6 +66,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#27ae60',
+            'primary-bg-light': 'rgba(39, 174, 96, 0.05)',
         },
         'purple': {
             'primary': '#9b59b6',
@@ -56,6 +76,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#9b59b6',
+            'primary-bg-light': 'rgba(155, 89, 182, 0.05)',
         },
         'red': {
             'primary': '#e74c3c',
@@ -65,6 +86,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#e74c3c',
+            'primary-bg-light': 'rgba(231, 76, 60, 0.05)',
         },
         'dark': {
             'primary': '#2c3e50',
@@ -74,6 +96,7 @@ class TechBookGenerator:
             'accent-amber': '#f39c12',
             'accent-pink': '#e91e63',
             'callout-border': '#2c3e50',
+            'primary-bg-light': 'rgba(44, 62, 80, 0.05)',
         },
     }
 
@@ -187,17 +210,19 @@ class TechBookGenerator:
         # Inline code
         html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
 
-        # Code blocks with syntax highlighting
+        # Code blocks with syntax highlighting and language label
         def highlight_code(match):
             lang = match.group(1) or ''
             code = match.group(2)
-            # Apply basic syntax highlighting
             code = self._apply_syntax_highlighting(code, lang)
-            return f'<pre><code class="language-{lang}">{code}</code></pre>'
+            lang_class = lang if lang else 'text'
+            display = self.LANG_DISPLAY.get(lang, lang.upper() if lang else 'TEXT')
+            header = f'<div class="code-block-header"><span class="code-block-lang">{display}</span></div>\n'
+            return f'<div class="code-block">\n{header}<pre><code class="language-{lang_class}">{code}</code></pre>\n</div>'
         html = re.sub(r'```(\w+)?\n(.+?)```', highlight_code, html, flags=re.DOTALL)
 
-        # Blockquotes (核心建议 boxes)
-        html = re.sub(r'^>\s+(.+)$', r'<blockquote>\1</blockquote>', html, flags=re.MULTILINE)
+        # Blockquotes and callout boxes
+        html = self._process_blockquotes(html)
 
         # Flowcharts: → A → B → C
         html = re.sub(r'→\s*([^\n→]+)', r'<span class="flowchart-arrow">→</span> <span class="flowchart-box">\1</span>', html)
@@ -212,7 +237,6 @@ class TechBookGenerator:
             if len(lines) < 2:
                 return match.group(0)
 
-            # Parse table
             rows = []
             for line in lines:
                 cells = [cell.strip() for cell in line.split('|')[1:-1]]
@@ -221,14 +245,11 @@ class TechBookGenerator:
             if not rows:
                 return match.group(0)
 
-            html_table = '<table>\n'
-            # Header row
-            html_table += '<thead><tr>'
+            html_table = '<table>\n<thead><tr>'
             for cell in rows[0]:
                 html_table += f'<th>{cell}</th>'
             html_table += '</tr></thead>\n<tbody>'
 
-            # Data rows (skip separator row)
             for row in rows[2:] if len(rows) > 2 else rows[1:]:
                 html_table += '<tr>'
                 for cell in row:
@@ -246,35 +267,256 @@ class TechBookGenerator:
         # Horizontal rule
         html = re.sub(r'^---$', '<hr>', html, flags=re.MULTILINE)
 
-        # Process steps: 1. Step one
-        html = re.sub(r'^(\d+)\.\s+(.+)$', r'<div class="process-step">\2</div>', html, flags=re.MULTILINE)
+        # Lists (unordered, ordered, and process steps)
+        html = self._process_lists(html)
 
         # Paragraphs (but avoid HTML tags)
-        html = re.sub(r'^(?!<[hbp]|<ul|<ol|<tab|<bl|<hr|<d|<f|<div)(.+)$', r'<p>\1</p>', html, flags=re.MULTILINE)
+        html = re.sub(r'^(?!<[hbp]|<ul|<ol|<tab|<bl|<hr|<d|<f|<div|<li)(.+)$', r'<p>\1</p>', html, flags=re.MULTILINE)
 
         return html
 
+    # --- HTML Escaping ---
+
+    def _escape_html(self, code):
+        """Escape HTML special characters in code."""
+        return code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+    # --- Syntax Highlighting ---
+
     def _apply_syntax_highlighting(self, code, lang):
-        """Apply basic syntax highlighting to code."""
-        # Escape HTML first
-        code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        """Apply syntax highlighting based on language."""
+        lang = (lang or '').lower()
+        dispatchers = {
+            'python': self._highlight_python, 'py': self._highlight_python,
+            'bash': self._highlight_bash, 'shell': self._highlight_bash, 'sh': self._highlight_bash,
+            'javascript': self._highlight_javascript, 'js': self._highlight_javascript,
+            'typescript': self._highlight_javascript, 'ts': self._highlight_javascript,
+            'css': self._highlight_css,
+            'html': self._highlight_html,
+        }
+        highlighter = dispatchers.get(lang, self._highlight_generic)
+        return highlighter(code)
 
-        # Python keywords
-        keywords = ['def', 'class', 'import', 'from', 'return', 'if', 'else', 'elif', 'for', 'while', 'try', 'except', 'with', 'as', 'True', 'False', 'None']
-        for kw in keywords:
-            code = re.sub(rf'\b{kw}\b', f'<span class="syntax-keyword">{kw}</span>', code)
-
-        # Strings
+    def _highlight_python(self, code):
+        """Python syntax highlighting."""
+        code = self._escape_html(code)
+        code = re.sub(r'(#.*)$', r'<span class="syntax-comment">\1</span>', code, flags=re.MULTILINE)
+        code = re.sub(r'"""(.+?)"""', r'<span class="syntax-string">"""\1"""</span>', code, flags=re.DOTALL)
+        code = re.sub(r"'''(.+?)'''", r"<span class=\"syntax-string\">'''\1'''</span>", code, flags=re.DOTALL)
         code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
         code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
-
-        # Numbers
-        code = re.sub(r'\b(\d+)\b', r'<span class="syntax-number">\1</span>', code)
-
-        # Comments
-        code = re.sub(r'(#.*)$', r'<span class="syntax-comment">\1</span>', code, flags=re.MULTILINE)
-
+        code = re.sub(r'\b(def)\s+(\w+)', r'<span class="syntax-keyword">\1</span> <span class="syntax-function">\2</span>', code)
+        code = re.sub(r'\b(class)\s+(\w+)', r'<span class="syntax-keyword">\1</span> <span class="syntax-class">\2</span>', code)
+        code = re.sub(r'@(\w+)', r'<span class="syntax-function">@\1</span>', code)
+        keywords = ['import', 'from', 'return', 'if', 'else', 'elif', 'for', 'while',
+                     'try', 'except', 'with', 'as', 'True', 'False', 'None', 'pass',
+                     'break', 'continue', 'raise', 'finally', 'yield', 'lambda', 'and', 'or', 'not', 'in', 'is']
+        for kw in keywords:
+            code = re.sub(rf'\b{kw}\b', f'<span class="syntax-keyword">{kw}</span>', code)
+        code = re.sub(r'\b(\d+\.?\d*)\b', r'<span class="syntax-number">\1</span>', code)
         return code
+
+    def _highlight_bash(self, code):
+        """Bash/Shell syntax highlighting."""
+        code = self._escape_html(code)
+        code = re.sub(r'(#.*)$', r'<span class="syntax-comment">\1</span>', code, flags=re.MULTILINE)
+        code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
+        code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
+        code = re.sub(r'\$(\w+)', r'<span class="syntax-variable">$\1</span>', code)
+        code = re.sub(r'\$\{([^}]+)\}', r'<span class="syntax-variable">${\1}</span>', code)
+        code = re.sub(r'(\s)(-{1,2}[\w-]+)', r'\1<span class="syntax-property">\2</span>', code)
+        keywords = ['if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'do', 'done',
+                     'case', 'esac', 'function', 'return', 'export', 'source', 'alias',
+                     'echo', 'cd', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'sed', 'awk',
+                     'find', 'chmod', 'chown', 'sudo', 'apt', 'yum', 'brew', 'pip', 'npm',
+                     'git', 'docker', 'curl', 'wget', 'vim', 'nano', 'ls', 'pwd', 'touch',
+                     'tail', 'head', 'sort', 'uniq', 'wc', 'xargs', 'tee', 'ln', 'tar',
+                     'ssh', 'scp', 'rsync', 'kill', 'ps', 'top', 'env', 'which', 'man']
+        for kw in keywords:
+            code = re.sub(rf'\b{kw}\b', f'<span class="syntax-keyword">{kw}</span>', code)
+        code = re.sub(r'\b(\d+)\b', r'<span class="syntax-number">\1</span>', code)
+        return code
+
+    def _highlight_javascript(self, code):
+        """JavaScript/TypeScript syntax highlighting."""
+        code = self._escape_html(code)
+        code = re.sub(r'(//.*)$', r'<span class="syntax-comment">\1</span>', code, flags=re.MULTILINE)
+        code = re.sub(r'/\*(.+?)\*/', r'<span class="syntax-comment">/*\1*/</span>', code, flags=re.DOTALL)
+        code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
+        code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
+        code = re.sub(r'`([^`]*)`', r'<span class="syntax-string">`\1`</span>', code)
+        code = re.sub(r'\b(function)\s+(\w+)', r'<span class="syntax-keyword">\1</span> <span class="syntax-function">\2</span>', code)
+        code = re.sub(r'\b(class)\s+(\w+)', r'<span class="syntax-keyword">\1</span> <span class="syntax-class">\2</span>', code)
+        code = re.sub(r'\b(\w+)\s*\(', r'<span class="syntax-function">\1</span>(', code)
+        code = re.sub(r'=>', '<span class="syntax-operator">=&gt;</span>', code)
+        keywords = ['const', 'let', 'var', 'return', 'if', 'else', 'for', 'while',
+                     'new', 'this', 'async', 'await', 'import', 'export', 'from',
+                     'default', 'try', 'catch', 'throw', 'typeof', 'instanceof',
+                     'true', 'false', 'null', 'undefined', 'switch', 'case', 'break',
+                     'continue', 'extends', 'super', 'static', 'yield', 'of', 'in']
+        for kw in keywords:
+            code = re.sub(rf'\b{kw}\b', f'<span class="syntax-keyword">{kw}</span>', code)
+        code = re.sub(r'\b(\d+\.?\d*)\b', r'<span class="syntax-number">\1</span>', code)
+        return code
+
+    def _highlight_css(self, code):
+        """CSS syntax highlighting."""
+        code = self._escape_html(code)
+        code = re.sub(r'/\*(.+?)\*/', r'<span class="syntax-comment">/*\1*/</span>', code, flags=re.DOTALL)
+        code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
+        code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
+        at_rules = ['@media', '@keyframes', '@import', '@font-face', '@charset', '@supports']
+        for rule in at_rules:
+            code = re.sub(rf'\b{re.escape(rule)}\b', f'<span class="syntax-keyword">{rule}</span>', code)
+        properties = ['color', 'background', 'border', 'margin', 'padding', 'font', 'display',
+                      'position', 'width', 'height', 'flex', 'grid', 'transition', 'animation',
+                      'transform', 'opacity', 'overflow', 'box-shadow', 'text-align', 'line-height',
+                      'letter-spacing', 'font-size', 'font-weight', 'font-family', 'max-width',
+                      'min-width', 'z-index', 'top', 'right', 'bottom', 'left', 'content',
+                      'cursor', 'visibility', 'white-space', 'word-break', 'border-radius',
+                      'justify-content', 'align-items', 'gap', 'padding', 'margin']
+        for prop in properties:
+            code = re.sub(rf'\b{prop}\s*:', f'<span class="syntax-property">{prop}</span>:', code)
+        code = re.sub(r'(\.[\w-]+)', r'<span class="syntax-class">\1</span>', code)
+        code = re.sub(r'(#[\w-]+)', r'<span class="syntax-variable">\1</span>', code)
+        code = re.sub(r'(::?[\w-]+)', r'<span class="syntax-function">\1</span>', code)
+        code = re.sub(r'\b(\d+\.?\d*)(px|em|rem|%|vh|vw|s|ms|deg)?\b', r'<span class="syntax-number">\1\2</span>', code)
+        code = re.sub(r'(#[0-9a-fA-F]{3,8})\b', r'<span class="syntax-number">\1</span>', code)
+        return code
+
+    def _highlight_html(self, code):
+        """HTML syntax highlighting."""
+        code = self._escape_html(code)
+        code = re.sub(r'(&lt;!--.+?--&gt;)', r'<span class="syntax-comment">\1</span>', code, flags=re.DOTALL)
+        code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
+        code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
+        code = re.sub(r'(&lt;/?)([\w-]+)', r'\1<span class="syntax-keyword">\2</span>', code)
+        code = re.sub(r'\s([\w-]+)=', r' <span class="syntax-property">\1</span>=', code)
+        code = re.sub(r'\b(\d+)\b', r'<span class="syntax-number">\1</span>', code)
+        return code
+
+    def _highlight_generic(self, code):
+        """Generic syntax highlighting for unknown languages."""
+        code = self._escape_html(code)
+        code = re.sub(r'(#.*)$', r'<span class="syntax-comment">\1</span>', code, flags=re.MULTILINE)
+        code = re.sub(r'"([^"]*)"', r'<span class="syntax-string">"\1"</span>', code)
+        code = re.sub(r"'([^']*)'", r"<span class=\"syntax-string\">'\1'</span>", code)
+        code = re.sub(r'\b(\d+\.?\d*)\b', r'<span class="syntax-number">\1</span>', code)
+        return code
+
+    # --- Blockquotes and Callout Boxes ---
+
+    def _process_blockquotes(self, html):
+        """Process blockquotes and callout boxes ([!NOTE], [!TIP], [!WARNING], [!DANGER], [!SUCCESS])."""
+        CALLOUT_MAP = {
+            'NOTE': ('info-box', '笔记'),
+            'INFO': ('info-box', '信息'),
+            'TIP': ('tip-box', '技巧'),
+            'WARNING': ('warning-box', '警告'),
+            'DANGER': ('danger-box', '危险'),
+            'SUCCESS': ('success-box', '成功'),
+        }
+
+        lines = html.split('\n')
+        result = []
+        i = 0
+
+        while i < len(lines):
+            if re.match(r'^>\s', lines[i]):
+                # Collect consecutive blockquote lines
+                bq_lines = []
+                while i < len(lines) and (re.match(r'^>\s', lines[i]) or lines[i].strip() == ''):
+                    if re.match(r'^>\s', lines[i]):
+                        bq_lines.append(lines[i])
+                    elif bq_lines:
+                        # Empty line inside blockquote — include as spacer
+                        bq_lines.append('>')
+                    i += 1
+
+                # Strip '> ' prefix
+                content_lines = []
+                for line in bq_lines:
+                    stripped = re.sub(r'^>\s?', '', line)
+                    content_lines.append(stripped)
+                content = '\n'.join(content_lines).strip()
+
+                if not content:
+                    continue
+
+                # Check for callout type: first line matches [!TYPE]
+                callout_match = re.match(r'^\[!(\w+)\]\s*$', content.split('\n')[0])
+                if callout_match:
+                    callout_type = callout_match.group(1).upper()
+                    if callout_type in CALLOUT_MAP:
+                        css_class, label = CALLOUT_MAP[callout_type]
+                        # Remove the [!TYPE] line
+                        body = '\n'.join(content.split('\n')[1:]).strip()
+                        # Render bold labels in the body
+                        body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', body)
+                        result.append(f'<div class="{css_class}">\n<strong>{label}：</strong>{body}\n</div>')
+                        continue
+
+                # Standard blockquote
+                content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+                content = re.sub(r'\n\n', '\n<br>\n', content)
+                result.append(f'<blockquote>\n{content}\n</blockquote>')
+            else:
+                result.append(lines[i])
+                i += 1
+
+        return '\n'.join(result)
+
+    # --- Lists ---
+
+    def _process_lists(self, html):
+        """Process unordered lists, ordered lists, and process steps."""
+        lines = html.split('\n')
+        result = []
+        i = 0
+
+        while i < len(lines):
+            ul_match = re.match(r'^([-*])\s+(.+)$', lines[i])
+            ol_match = re.match(r'^(\d+)\.\s+(.+)$', lines[i])
+
+            if ul_match:
+                # Collect consecutive unordered list items
+                items = []
+                while i < len(lines):
+                    m = re.match(r'^[-*]\s+(.+)$', lines[i])
+                    if m:
+                        items.append(m.group(1))
+                        i += 1
+                    else:
+                        break
+                items_html = '\n'.join(f'<li>{item}</li>' for item in items)
+                result.append(f'<ul>\n{items_html}\n</ul>')
+
+            elif ol_match:
+                # Collect consecutive ordered list items
+                items = []
+                while i < len(lines):
+                    m = re.match(r'^\d+\.\s+(.+)$', lines[i])
+                    if m:
+                        items.append(m.group(1))
+                        i += 1
+                    else:
+                        break
+
+                if len(items) >= 2:
+                    items_html = '\n'.join(f'<li>{item}</li>' for item in items)
+                    result.append(f'<ol>\n{items_html}\n</ol>')
+                else:
+                    # Single item — use process-step with wrapper
+                    items_html = '\n'.join(
+                        f'<div class="process-step">{item}</div>' for item in items
+                    )
+                    result.append(f'<div class="process-steps">\n{items_html}\n</div>')
+
+            else:
+                result.append(lines[i])
+                i += 1
+
+        return '\n'.join(result)
 
     def _convert_file_trees(self, html):
         """Convert file tree patterns to styled HTML."""
@@ -406,6 +648,7 @@ class TechBookGenerator:
         html = re.sub(r'--accent-amber:\s*#[0-9a-fA-F]{6}', f'--accent-amber: {theme_colors["accent-amber"]}', html)
         html = re.sub(r'--accent-pink:\s*#[0-9a-fA-F]{6}', f'--accent-pink: {theme_colors["accent-pink"]}', html)
         html = re.sub(r'--callout-border:\s*#[0-9a-fA-F]{6}', f'--callout-border: {theme_colors["callout-border"]}', html)
+        html = re.sub(r'rgba\(52,\s*152,\s*219,\s*0\.05\)', theme_colors.get('primary-bg-light', 'rgba(52, 152, 219, 0.05)'), html)
 
         return html
 
@@ -467,7 +710,7 @@ def main():
     parser.add_argument('--title', required=True, help='Book title')
     parser.add_argument('--author', required=True, help='Author name')
     parser.add_argument('--subtitle', help='Subtitle')
-    parser.add_argument('--series', default='橙皮书', help='Series name')
+    parser.add_argument('--series', default='技术文档', help='Series name')
     parser.add_argument('--version', help='Version (default: auto-generated)')
     parser.add_argument('--keywords', help='Keywords separated by ·')
     parser.add_argument('--audience', help='Target audience')
@@ -486,7 +729,7 @@ def main():
         content = f.read()
 
     # Generate HTML
-    generator = OrangeBookGenerator(
+    generator = TechBookGenerator(
         title=args.title,
         author=args.author,
         subtitle=args.subtitle,
@@ -521,8 +764,8 @@ def main():
         if result:
             print(f"✓ Generated PDF: {pdf_path}")
         else:
-            print("✗ PDF conversion failed. Please install wkhtmltopdf:")
-            print("  brew install wkhtmltopdf")
+            print("✗ PDF conversion failed. Please install Playwright:")
+            print("  pip3 install playwright && playwright install chromium")
 
 
 if __name__ == '__main__':
